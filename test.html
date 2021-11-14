@@ -1,0 +1,41 @@
+<html lang="en">
+ 	<head>
+ 		<meta charset="utf-8">
+ 		<title>WFH vs WFO Analysis</title>
+ 		<script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+    </head>
+
+    <script type="text/javascript">
+
+        var observations = []
+
+        d3.csv("WFH_WHO_dataset.csv", function(data){
+            
+            for (var i = 0; i < data.length; i++){
+
+                var observation = {
+                    
+                    id: +data[i].id, 
+                    age: +data[i].age,
+                    occupation: data[i].occupation,
+                    gender: data[i].gender,
+                    
+
+                }
+
+            }
+
+            test_function()
+        });
+
+        function test_function(){
+
+            console.log(data.id);
+
+        }
+
+
+
+    </script>
+
+</html>
