@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Cholera Map</title>
+    <meta name="author" content="Andrew George">
+    <meta name="course" content="INFO 517">
+    <meta name="description" content="Recreation of John Snow's 1854 Cholera Map">
+    <meta charset="utf-8">
+	<script src="https://d3js.org/d3.v3.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="styles/cholera_map.css">
+</head>
+<body>
+
+	<header><h1>John Snow 1854 Cholera Map D3 Recreation</h1></header>
+
+	<nav>
+		<ul>
+			<li><a href="index.html">Home</a></li>
+			<br>
+			<li><a href="about.html">About</a></li>
+			<br>
+			<li><a href="video.html">Video Presentation</a></li>
+		</ul>
+	</nav>
+
+	<div id="map">
+		<div id="timeline"><h3>Deaths by Day (Aug. 19 - Sept. 29)</h3>
+			<svg id="timeline_svg" width="600" height="400">
+				<g transform="translate(80,40)"></g>
+			</svg>
+
+		</div>
+		<div id="main_map">
+			<g>
+			</g>
+		</div>
+		<div id="filters">
+			
+			<h3 id='map_filters'>Map Legend</h3>
+		
+			<text id="male_ds">Male Deaths</text>
+			<text id="female_ds">Female Deaths</text>
+			<text id="pumps">Pumps</text>
+
+		</div>
+	</div>
+
+
+
+	<div id="charts">
+		<div id="sexes_chart">
+			<h2>Deaths by Sexes</h2>
+			<text x="100" y="100" id="females">Females: 287</text>
+			<text x="100" y="200" id="males">Males: 284</text>
+		</div>
+
+		<div id="ages_chart">
+			<h2>Deaths by Age Groups</h2>
+			<text x="50" y="50" id="age0_10">0-10 years: 143</text>
+			<text x="50" y="50" id="age11_20">11-20 years: 48</text>
+			<text x="50" y="50" id="age21_40">21-40 years: 58</text>
+			<text x="50" y="50" id="age41_60">41-60 years: 57</text>
+			<text x="50" y="50" id="age61_80">61-80 years: 91</text>
+			<text x="50" y="50" id="age80plus">>80 years: 174</text>
+		</div>
+
+		<div id="age_props">
+			<h2>Proportion of Age Groups</h2>
+
+		</div>
+	</div>
+
+	<script type="text/javascript">
+
+//------------------- sexes and ages pie charts ------------------------
+
+		// initialize arrays
+		var males = 0;
+		var females = 0;
+		var ages = [];
+		var sexes = [];
+		var deaths = [];
+		var pumps = [];
+		var death_dates = [];
+		var age_0_10 = 0;
+		var age_11_20 = 0;
+		var age_21_40 = 0;
+		var age_41_60 = 0;
+		var age_61_80 = 0;
+		var age_gt_80 = 0;
+
+
+		d3.json("streets.json", function(data) {
+			streets = data;
+		})
+
+		d3.csv("pumps.csv", function(data){
+			pumps = data;
+		})
+
+		d3.csv("")
+
+		d3.csv("deathdays.csv", function(data) {
+			
+			for (var i=0; i <data.length; i++) {
+
+				observation = {date: data[i].date,
+							   deaths: data[i].deaths}
+
+			   death_dates.push(observation)
+
+			}
+			
+			draw_timeline()
+
+		})
+
+		// load ages, sexes, and draw pie charts
+		d3.csv("deaths_age_sex_date.csv", function(data) {
+			
+			for (var i = 0; i < data.length; i++) {
+				
+				// create death observation with key/value pairs for data
+				var death = {
+					id: i,
+					x: +data[i].x,
+					y: +data[i].y,
+					age: +data[i].age,
+					sex: +data[i].gender,
+					date: data[i].date
+				}
+
+				// add death observation to dataset
+				deaths.push(death);
+
+				age = +data[i].age;
+				sex = +data[i].gender;
+
+				if (sex == 1){females ++;} else if (sex == 0){males ++;}
+
+				switch(age) {
+					case 0: age_0_10 ++; break;
+					case 1: age_11_20 ++; break;
+					case 2: age_21_40 ++; break; 
+					case 3: age_41_60 ++; break;
+					case 4: age_61_80 ++; break; 
+					case 5: age_gt_80 ++; break;
+				}
+			}
+			// aggregate counts of sexes
+			sexes.push(females, males);
+
+			// aggregate counts of ages
+			ages.push(age_0_10, age_11_20, age_21_40, age_41_60, age_61_80, age_gt_80);
+
+			draw_all();
+		})
+
+		function draw_timeline(){
+
+			max_bar_h = 200
+			max_value = 143
+
+			var xScale = d3.scale.linear();
+			var yScale = d3.scale.linear();
+
+
+            // determines limits of scale for interpolation
+			xScale.domain([0, 45]) // range data values
+                  .range([0, 400]); // 400 pixels wide (output pixel range)
+			
+			yScale.domain([0, 150]) // range data values 
+                  .range([200, 0]); // 200 pixels high
+
+
+			var g = d3.select("#timeline").select("svg").select("g")
+
+			// var bars = d3.select("#timeline")
+			// 			 .select("svg")
+				
+				
+				g.selectAll(".rect")
+				.data(death_dates)
+				.enter()
+				.append('rect')
+				.attr('class', 't_rects')
+				.attr('width', 10)
+				.attr('height', function(d){
+					var bar_length = (d.deaths / max_value) * max_bar_h;
+					return bar_length;
+
+				})
+				.attr('x', function(d,i){
+					return xScale(i);
+					})
+				.attr('y', function(d){
+					var n = 1 - (d.deaths / max_value);
+					return n * max_bar_h;
+					//return 200-yScale(d.deaths);
+				})
+
+			// create x axis
+			var xAxis = d3.svg.axis()
+				.scale(xScale)
+				.orient('bottom')
+				.tickFormat(function(d) { 
+					return "" + d; })
+
+			// create y axis
+			var yAxis = d3.svg.axis()
+				.scale(yScale)
+				.orient('left');
+
+			// append x axis to image
+			g.append('g')
+				.attr('class', 'axis')
+				.attr('transform', 'translate(0,' + 200 + ')')
+				.call(xAxis);
+
+			// append y axis to image
+			g.append('g')
+				.attr('class', 'axis')
+				.call(yAxis);
+
+
+		}
+
+		function draw_sexes_pie(){
+
+			// initialize variables
+			var height = 200;
+			var width = 200;
+			var s_pie_margin = 40;
+			var s_pie_radius = width/2;
+			var inner_radius = 0;
+			var s_pie = d3.layout.pie();
+
+			var arc = d3.svg.arc()
+							.innerRadius(inner_radius)
+							.outerRadius(s_pie_radius);
+
+			//var sp_svg = d3.select("body")
+			var sp_svg = d3.select("#sexes_chart")
+						.append("svg")
+						.attr("width", width)
+						.attr("height", height)
+						.attr("class", "chart")
+						.attr("id", "sexes_svg");
+
+			var arcs = sp_svg.selectAll("g.arc")
+						.data(s_pie(sexes))
+						.enter()
+						.append("g")
+						.attr("class", "arc")
+						.attr("transform", "translate(" + s_pie_radius + ", " + s_pie_radius + ")");
+
+			var color = d3.scale.category10();
+
+			// Draw arc paths
+			arcs.append("path")
+				.attr("fill", function(d, i) {
+					return color(i);})
+				.attr("d", arc);
+			};
+
+		function draw_ages_pie(){
+			
+			// initialize variables
+			var height = 200;
+			var width = 200;
+			var a_pie_margin = 40;
+			var a_pie_radius = width/2;
+			var inner_radius = 0;
+			var a_pie = d3.layout.pie();
+
+			var arc = d3.svg.arc()
+							.innerRadius(inner_radius)
+							.outerRadius(a_pie_radius);
+
+			var ap_svg = d3.select("#ages_chart")
+						.append("svg")
+						.attr("width", width)
+						.attr("height", height)
+						.attr("id", "ages_svg");
+
+			var arcs = ap_svg.selectAll("g.arc")
+						.data(a_pie(ages))
+						.enter()
+						.append("g")
+						.attr("class", "arc")
+						.attr("transform", "translate(" + a_pie_radius + ", " + a_pie_radius + ")");
+
+			var color = d3.scale.category10();
+
+			var pic = d3.select("#age_props")
+						.append("img")
+						.attr("src", "images/population_proportions.png")
+
+			// Draw arc paths
+			arcs.append("path")
+				.attr("fill", function(d, i) {
+					return color(i);})
+				.attr("d", arc);
+			};
+
+//------------------------- Map -------------------------------
+
+		function draw_map() {
+
+			var width = 700;
+			var height = 600;
+
+			var g = d3.select("#main_map")
+					  .append("svg")
+					  .attr("width", width)
+					  .attr("height", height)
+					  .attr("id", "cholera_map")
+
+
+		    var xScale = d3.scale.linear();
+			var yScale = d3.scale.linear();
+
+			xScale.domain([0,20])
+				  .range([0, width]);
+			
+			yScale.domain([20,0])
+				  .range( [0, height]);
+
+			var pathGenerator = d3.svg.line()
+				.x(function(d) { return xScale(d.x);})
+				.y(function(d) { return yScale(d.y);});
+			
+			// draw streets
+			g.selectAll(".line")
+   	 			.data(streets)
+    			.enter().append("path")
+    			.style('stroke-width', '1px')
+				.style('fill', 'none')
+    			.style('stroke', 'black')
+    			.attr("d", pathGenerator)
+
+			// draw workhouse
+			g.append("rect")
+			.attr("width", 20)
+			.attr('height', 30)
+			.attr("transform", "translate(405,182) rotate(65)")
+			.style('fill', 'orange')
+
+			// draw brewery
+			g.append("rect")
+			.attr("width", 18)
+			.attr('height', 28)
+			.attr("transform", "translate(470,235) rotate(-30)")
+			.style('fill', 'teal')
+			
+			
+			// draw street names
+
+			// POLAND STREET
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+  			.style("font-size", "8px")
+  			.attr("transform", "translate(425,170) rotate(65)")
+  			.text("POLAND STREET");
+
+			// BROAD STREET
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+  			.style("font-size", "8px")
+  			.attr("transform", "translate(445,240) rotate(-23)")
+  			.text("BROAD STREET");
+
+			// MARSHALL STREET
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+  			.style("font-size", "8px")
+  			.attr("transform", "translate(390,250) rotate(63)")
+  			.text("MARSHALL STREET");
+
+			// GREAT MARLBOROUGH STREET
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+  			.style("font-size", "8px")
+  			.attr("transform", "translate(330,182) rotate(-21)")
+  			.text("GREAT MARLBOROUGH STREET");
+
+			// REGENT STREET
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+  			.style("font-size", "8px")
+  			.attr("transform", "translate(300,315) rotate(58)")
+  			.text("REGENT STREET");
+
+			// SILVER STREET
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+  			.style("font-size", "8px")
+  			.attr("transform", "translate(395,320) rotate(-32)")
+  			.text("SILVER STREET");
+
+			// BERWICK STREET
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+  			.style("font-size", "8px")
+  			.attr("transform", "translate(473,160) rotate(60)")
+  			.text("BERWICK STREET");
+			
+			// WARDOUR STREET
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+  			.style("font-size", "8px")
+  			.attr("transform", "translate(510,150) rotate(60)")
+  			.text("WARDOUR STREET");
+
+			// BREWERY
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "WHITE")
+  			.style("font-size", "5px")
+			.style("font-weight", 'bold')
+  			.attr("transform", "translate(485,243) rotate(60)")
+  			.text("BREWERY");
+
+			// WORKHOUSE 
+			g.append("text")
+			.attr("text-anchor", "middle")
+			.style("fill", "black")
+			.style("font-weight", 'bold')
+  			.style("font-size", "5px")
+  			.attr("transform", "translate(397,197) rotate(-53)")
+  			.text("WORKHOUSE");
+		}
+
+
+
+
+		function draw_deaths_pumps() {
+
+			var width = 700;
+			var height = 600;
+
+			var xScale = d3.scale.linear();
+			var yScale = d3.scale.linear();
+
+			xScale.domain([0,20])
+				.range([0, width]);
+
+			yScale.domain([20,0])
+				.range( [0, height]);
+
+			// draw deaths
+			var g = d3.select("#cholera_map")
+					.selectAll(".circle")    
+					.data(deaths) 
+					.enter()
+					.append('circle')
+					.style("fill", function (d){
+						if(d.sex==0){ 
+							return "red"
+						} else {
+							return "blue"}})
+				.attr("r", 2)
+				.attr('cx', function(d){
+					return xScale(d.x)})
+				.attr('cy', function(d){
+					return yScale(d.y)})
+				.attr('id', function(d){
+					return 'map_' + d.id;})
+
+
+				// draw pumps
+			var g2 = d3.select("#cholera_map")
+				.selectAll(".circle")
+				.data(pumps) 
+				.enter()
+				.append('circle')
+				.style("fill", "green")
+				.attr("r", 10)
+				.attr('cx', function(d){
+					return xScale(d.x)})
+				.attr('cy', function(d){
+					return yScale(d.y)})
+				.attr('id', function(d){
+					return 'map_' + d.id;})
+
+}
+
+		function draw_all(){
+			draw_map();
+			draw_deaths_pumps();
+			draw_sexes_pie();
+			draw_ages_pie();
+		}
+
+	</script>
+
+</body>
+
+
+</html>
