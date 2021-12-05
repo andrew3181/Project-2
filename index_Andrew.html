@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="utf-8">
+   <title>WFH vs WFO Analysis</title>
+   <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
+   <style>
+      .axis path,
+      .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+      }
+
+      .x.axis path {
+         display: none;
+      }
+   </style>
+</head>
+ 	<body>
+      <div class="header">
+			<h1>WFH vs WFO Analysis</h1>
+			<ul>
+				<li>
+					<a href="index.html">Home</a>
+				</li>
+				<li>
+					<a href="documentation.html">Documentation</a>
+				</li>
+				<li>
+					<a href="video.html">Video</a>
+				</li>
+			</ul>
+      </div>
+      <div class="grid-container">
+		<div class="grid-child">
+			<div class="map" id="main-viz">
+				<h2>Something Here</h2>
+         </div>
+      </div>
+         <div class="grid-child">
+		      <div class="timeline" id="timeline">
+				<h2>Something Else Here</h2>
+            <svg class="chart" id="line-chart" font-size="10px"></svg>
+			</div>
+      </div>
+   </div>
+		<div class="footer">
+			<p>Created by Matthew Mills, INFO H517</p>
+      </div>
+   
+ <script type="text/javascript">
+
+   d3.csv("wfo_wfh_preference.csv", function(data){
+
+
+         // set the dimensions and margins of the graph
+         var margin = {top: 10, right: 30, bottom: 20, left: 50},
+                       width = 460 - margin.left - margin.right,
+                       height = 400 - margin.top - margin.bottom;
+
+         var height = 400;
+
+         var svg = d3.select('#main-viz')
+                     .append("svg")
+                     .attr('width', width + margin.left + margin.right)
+                     .attr('height', height + margin.top + margin.bottom)
+                     .append('g')
+                     .attr('transform', 'translate(50,10)');
+
+
+
+         var subgroups = data.columns.slice(1);
+
+         var groups = d3.map(data, function(d){return(d.group)}).keys();
+
+         // add X axis
+         var x = d3.scaleBand()
+                   .domain(groups)
+                   .range([0, width])
+                   .padding([0.2])
+         
+         svg.append('g')
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x).tickSize(0));
+
+//---------------------------------------------------------------------------------
+
+         // add Y axis
+         var y = d3.scaleLinear()
+                   .domain([0, 30])
+                   .range([height, 0]);
+
+         svg.append('g')
+            .call(d3.axisLeft(y));
+
+//-----------------------------------------------------------------------------------
+
+         // scale for subgroup position
+         var xSubgroup = d3.scaleBand()
+                           .domain(subgroups)
+                           .range([0, x.bandwidth()])
+                           .padding([0.05]);
+
+         // color pallet
+         var color = d3.scaleOrdinal()
+                       .domain(subgroups)
+                       .range(['#e5f5f9', '#99d8c9', '#2ca25f'])
+
+         // show bars
+         svg.append('g')
+            .selectAll('g')
+            .data(data)
+            .enter()
+            .append('g')
+            .attr('transform', function(d){return 'translate(' + x(d.group) + ',0)';})
+            .selectAll('rect')
+            .data(function(d){return subgroups.map(function(key){return{key: key, value: d[key]};});})
+            .enter()
+            .append('rect')
+            .attr('x', function(d){return xSubgroup(d.key);})
+            .attr('y', function(d){return y(d.value);})
+            .attr('width', xSubgroup.bandwidth())
+            .attr('height', function(d){return height - y(d.value);})
+            .attr('fill', function(d){return color(d.key);});
+
+
+         // append legend
+
+         // create a list of keys
+         var keys = ["Work From Home", "Work From Office"]
+
+         // Usually you have a color scale in your chart already
+         var color = d3.scaleOrdinal()
+         .domain(keys)
+         .range(d3.schemeSet1);
+
+         // Add one dot in the legend for each name.
+         var size = 20
+         svg.selectAll("rects")
+         .data(keys)
+         .enter()
+         .append("rect")
+            .attr("x", 100)
+            .attr("y", function(d,i){ return 100 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("width", size)
+            .attr("height", size)
+            .style("fill", function(d){ return color(d)})
+
+         // Add one dot in the legend for each name.
+         svg.selectAll("mylabels")
+         .data(keys)
+         .enter()
+         .append("text")
+            .attr("x", 100 + size*1.2)
+            .attr("y", function(d,i){ return 100 + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+            .style("fill", function(d){ return color(d)})
+            .text(function(d){ return d})
+            .attr("text-anchor", "left")
+            .style("alignment-baseline", "middle")
+
+      });
+</script>
